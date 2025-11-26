@@ -96,7 +96,9 @@ export default function App() {
             <p className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase">
               University of Technology
             </p>
-            <h1 className="text-white text-2xl font-bold mt-1">STUDENT ID</h1>
+            <h1 className="text-white text-2xl font-bold mt-1">
+              {userInfo.isAdmin ? "ADMINISTRATOR ID" : "STUDENT ID"}
+            </h1>
           </div>
         </div>
 
@@ -145,7 +147,7 @@ export default function App() {
           <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 grid grid-cols-2 gap-4">
             <div className="text-left">
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                Student ID
+                {userInfo.isAdmin ? "Administrator ID" : "Student ID"}
               </p>
               <p className="text-lg font-mono font-bold text-blue-900 mt-0.5">
                 {userInfo.studentId}
