@@ -10,8 +10,11 @@ createRoot(document.getElementById("root")).render(
       config={{
         baseUrl: "https://api.asgardeo.io/t/idcardapp",
         clientID: "jMAStrEZ0CC6thhUvoVUfaX6kBga",
-        signInRedirectURL: "http://localhost:5173",
-        signOutRedirectURL: "http://localhost:5173",
+        // signInRedirectURL: "http://localhost:5173",
+        // signOutRedirectURL: "http://localhost:5173",
+        signInRedirectURL: "https://digital-student-id-card-rouge.vercel.app",
+        signOutRedirectURL: "https://digital-student-id-card-rouge.vercel.app",
+
         scope: [
           "openid",
           "profile",
@@ -20,8 +23,13 @@ createRoot(document.getElementById("root")).render(
           "roles",
           "internal_guest_mgt_invite_add",
         ],
+        // resourceServerURLs: [
+        //   "http://localhost:5173",
+        //   "https://api.asgardeo.io/t/idcardapp",
+        // ],
+
         resourceServerURLs: [
-          "http://localhost:5173",
+          "https://digital-student-id-card-rouge.vercel.app",
           "https://api.asgardeo.io/t/idcardapp",
         ],
       }}
