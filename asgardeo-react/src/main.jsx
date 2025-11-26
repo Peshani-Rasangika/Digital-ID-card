@@ -14,7 +14,6 @@ createRoot(document.getElementById("root")).render(
         // signOutRedirectURL: "http://localhost:5173",
         signInRedirectURL: "https://digital-student-id-card-rouge.vercel.app",
         signOutRedirectURL: "https://digital-student-id-card-rouge.vercel.app",
-
         scope: [
           "openid",
           "profile",
