@@ -197,7 +197,6 @@ export default function App() {
             Secure Sign Out
           </button>
 
-          {/* THIS IS WHERE THE ROLE IS USED */}
           {userInfo.isAdmin && (
             <button
               onClick={() => setShowAdmin(true)}
@@ -215,9 +214,29 @@ export default function App() {
 // --- SECURE INVITATION ADMIN PORTAL (USING FETCH) ---
 function AdminPortal({ onBack }) {
   const { getAccessToken } = useAuthContext();
+
+  const [tab, setTab] = useState("invite");
+
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  // ADD USER STATE
+  const [form, setForm] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    studentId: "",
+    involvement: "Undergraduate",
+    validThru: "",
+  });
+  const [addMessage, setAddMessage] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  // COMMON INPUT HANDLER
+  const updateForm = (key, value) => {
+    setForm({ ...form, [key]: value });
+  };
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -258,72 +277,229 @@ function AdminPortal({ onBack }) {
     }
   };
 
+  // --------------------------------
+  // ADD USER MANUALLY USING SCIM2
+  // --------------------------------
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    setAdding(true);
+    setAddMessage("");
+
+    try {
+      const generatedPassword =
+        form.involvement === "Undergraduate"
+          ? `UStu${form.studentId}`
+          : `PStu${form.studentId}`;
+
+      const scimPayload = {
+        schemas: [
+          "urn:ietf:params:scim:schemas:core:2.0:User",
+          "urn:scim:wso2:schema",
+        ],
+        userName: form.email,
+        password: generatedPassword,
+        name: {
+          givenName: form.firstName,
+          familyName: form.lastName,
+        },
+        emails: [
+          {
+            primary: true,
+            value: form.email,
+            type: "home",
+          },
+        ],
+        "urn:scim:wso2:schema": {
+          // no userStoreDomain -> will use PRIMARY store
+          "http://wso2.org/claims/student_id": form.studentId,
+          "http://wso2.org/claims/involvement": form.involvement,
+          "http://wso2.org/claims/valid_thru": form.validThru,
+        },
+        roles: [{ value: "Student" }],
+      };
+
+      const response = await fetch("http://localhost:4000/api/create-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scimPayload),
+      });
+
+      let data = {};
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (response.status === 201) {
+        setAddMessage(
+          `✅ User created! Temporary password: ${generatedPassword}`
+        );
+        setForm({
+          email: "",
+          firstName: "",
+          lastName: "",
+          studentId: "",
+          involvement: "Undergraduate",
+          validThru: "",
+        });
+      } else {
+        setAddMessage(`❌ Error: ${data.detail || JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      console.error("Add user error:", err);
+      setAddMessage("❌ Network or Server Error.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // --------------------------------------------------
+  //                ADMIN PORTAL UI
+  // --------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl">
+      <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl">
         <button
           onClick={onBack}
           className="text-sm text-blue-500 hover:underline mb-6 flex items-center gap-1"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          Back to ID Card
+          ← Back to ID Card
         </button>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          Invite New Student
+
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          University Admin Portal
         </h2>
-        <p className="text-gray-600 mb-8">
-          Enter the student's official university email. They will receive a
-          secure link to create their account and set up their digital ID.
-        </p>
-        <form onSubmit={handleInvite}>
-          <div className="mb-4">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Student Email Address
+
+        {/* TAB SWITCHER */}
+        <div className="flex mb-6">
+          <button
+            className={`flex-1 py-2 ${
+              tab === "invite"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500"
+            }`}
+            onClick={() => setTab("invite")}
+          >
+            Send Invite
+          </button>
+          <button
+            className={`flex-1 py-2 ${
+              tab === "add"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500"
+            }`}
+            onClick={() => setTab("add")}
+          >
+            Add User Manually
+          </button>
+        </div>
+
+        {/* ----------------------------- */}
+        {/* TAB 1: SEND INVITATION        */}
+        {/* ----------------------------- */}
+        {tab === "invite" && (
+          <form onSubmit={handleInvite}>
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              Student Email
             </label>
             <input
               type="email"
-              id="email"
+              className="w-full mb-4 p-2 border rounded"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="student.name@university.edu"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="student@university.edu"
             />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
-          >
-            {loading ? "Sending..." : "Send Invitation"}
-          </button>
-        </form>
-        {message && (
-          <p
-            className={`mt-4 text-sm font-medium p-3 rounded-md ${
-              message.startsWith("❌")
-                ? "bg-red-50 text-red-700"
-                : "bg-green-50 text-green-700"
-            }`}
-          >
-            {message}
-          </p>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 rounded-md"
+            >
+              {loading ? "Sending..." : "Send Invitation"}
+            </button>
+
+            {message && (
+              <p className="mt-4 p-3 text-sm rounded bg-gray-50">{message}</p>
+            )}
+          </form>
+        )}
+
+        {/* ----------------------------- */}
+        {/* TAB 2: ADD USER MANUALLY      */}
+        {/* ----------------------------- */}
+        {tab === "add" && (
+          <form onSubmit={handleAddUser}>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <input
+                className="border p-2 rounded"
+                placeholder="First Name"
+                required
+                value={form.firstName}
+                onChange={(e) => updateForm("firstName", e.target.value)}
+              />
+
+              <input
+                className="border p-2 rounded"
+                placeholder="Last Name"
+                required
+                value={form.lastName}
+                onChange={(e) => updateForm("lastName", e.target.value)}
+              />
+            </div>
+
+            <input
+              className="w-full border p-2 rounded mb-4"
+              type="email"
+              placeholder="Email"
+              required
+              value={form.email}
+              onChange={(e) => updateForm("email", e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded mb-4"
+              placeholder="Student ID"
+              required
+              value={form.studentId}
+              onChange={(e) => updateForm("studentId", e.target.value)}
+            />
+
+            <select
+              className="w-full border p-2 rounded mb-4"
+              value={form.involvement}
+              onChange={(e) => updateForm("involvement", e.target.value)}
+            >
+              <option>Undergraduate</option>
+              <option>Postgraduate</option>
+            </select>
+
+            <input
+              className="w-full border p-2 rounded mb-4"
+              type="date"
+              required
+              value={form.validThru}
+              onChange={(e) => updateForm("validThru", e.target.value)}
+            />
+
+            <button
+              type="submit"
+              disabled={adding}
+              className="w-full bg-green-600 text-white py-2 rounded-md"
+            >
+              {adding ? "Creating..." : "Create Student User"}
+            </button>
+
+            {addMessage && (
+              <p className="mt-4 p-3 text-sm rounded bg-gray-50">
+                {addMessage}
+              </p>
+            )}
+          </form>
         )}
       </div>
     </div>
